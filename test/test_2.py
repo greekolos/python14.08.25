@@ -1,8 +1,11 @@
+import tempfile
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
-import tempfile
+
+@pytest.fixture
 def browser():
     options = Options()
     options.add_argument("--headless=new")
@@ -15,9 +18,8 @@ def browser():
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    return driver
-
-
+    yield driver
+    driver.quit()
 
 def test_registr(browser):
     browser.get("https://www.google.com/")
