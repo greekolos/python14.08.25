@@ -82,7 +82,7 @@ jobs:
           elif [[ "$MODE" == "changed" ]]; then
               PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
               if [ -n "$PREV_COMMIT" ]; then
-                  CHANGED_TESTS=$(git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+                  CHANGED_TESTS=$(git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -E 'test/.*\.py$' || true)
               else
                   CHANGED_TESTS=""
               fi
