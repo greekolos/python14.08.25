@@ -28,8 +28,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # важно для git diff на пуше
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -42,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2t64
+          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install pytest-xdist
@@ -86,12 +84,21 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+            # Если нет предыдущего коммита, берём последний
+            if [ -z "${{ github.event.before }}" ] || [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
+              git fetch --depth=2 origin main
+              BEFORE_SHA=$(git rev-parse HEAD~1)
+            else
+              BEFORE_SHA=${{ github.event.before }}
+            fi
+
+            CHANGED_TESTS=$(git diff --name-only $BEFORE_SHA ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               $TEST_CMD $CHANGED_TESTS
             else
-              echo "No changed tests found."
+              echo "No changed tests found. Running all tests instead."
+              $TEST_CMD
             fi
 
           elif [[ "$MODE" == "path" ]]; then
