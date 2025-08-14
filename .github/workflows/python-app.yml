@@ -3,7 +3,7 @@ name: Run Selenium Tests
 on:
   push:
     branches:
-      - main
+      - '**'
   workflow_dispatch:
     inputs:
       mode:
@@ -22,8 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11]  # можно добавить несколько версий Python
-        # кол-во потоков для pytest-xdist
+        python-version: [3.11]
         workers: [4]
 
     steps:
@@ -41,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2t64
+          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install pytest-xdist
@@ -85,7 +84,14 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+            # Изменённые или новые тесты между коммитами
+            if [[ ${{ github.event.before }} == "0000000000000000000000000000000000000000" ]]; then
+              # первый коммит — запускаем все тесты
+              CHANGED_TESTS=$(find tests -name "*.py")
+            else
+              CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+            fi
+
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               $TEST_CMD $CHANGED_TESTS
