@@ -3,7 +3,7 @@ name: Run Selenium Tests
 on:
   push:
     branches:
-      - main
+      - '**'  # Все ветки
   workflow_dispatch:
     inputs:
       mode:
@@ -84,7 +84,12 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+            # Определяем изменённые тесты
+            if [ -n "${{ github.event.before }}" ] && [ -n "${{ github.sha }}" ]; then
+              CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
+            else
+              CHANGED_TESTS=""
+            fi
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               $TEST_CMD $CHANGED_TESTS
