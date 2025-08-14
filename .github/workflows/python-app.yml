@@ -1,7 +1,7 @@
 name: Run Selenium Tests
 
 on:
-  push: # любой пуш
+  push:        # любой пуш
   workflow_dispatch:
     inputs:
       mode:
@@ -79,37 +79,5 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-            if [ -n "$PREV_COMMIT" ]; then
-              CHANGED_TESTS=$(git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
-            else
-              CHANGED_TESTS=""
-            fi
+            PREV_COM_
 
-            if [ -n "$CHANGED_TESTS" ]; then
-              echo "Changed test files: $CHANGED_TESTS"
-              $TEST_CMD $CHANGED_TESTS
-            else
-              echo "No changed tests found. Running all tests."
-              $TEST_CMD
-            fi
-
-          elif [[ "$MODE" == "path" ]]; then
-            if [ -n "$PATH_INPUT" ]; then
-              $TEST_CMD "$PATH_INPUT"
-            else
-              echo "Error: test_path is empty"
-              exit 1
-            fi
-
-          elif [[ "$MODE" == "marker" ]]; then
-            if [ -n "$MARKER" ]; then
-              $TEST_CMD -m "$MARKER"
-            else
-              echo "Error: test_marker is empty"
-              exit 1
-            fi
-
-          else
-            echo "Invalid mode: $MODE"
-            exit 1
