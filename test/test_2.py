@@ -1,0 +1,27 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+import tempfile
+
+import pytest
+
+@pytest.fixture
+def browser():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+
+    user_data_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    yield driver
+    driver.quit()
+
+
+def test_registr(browser):
+    browser.get("https://www.google.com/")
+    assert "Google" in browser.title
