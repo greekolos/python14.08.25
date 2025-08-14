@@ -1,9 +1,7 @@
 name: Run Selenium Tests
 
 on:
-  push:
-    branches:
-      - main
+  push: # любой пуш
   workflow_dispatch:
     inputs:
       mode:
@@ -29,7 +27,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # чтобы git diff работал корректно
+          fetch-depth: 0 # обязательно, чтобы git diff работал
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -51,11 +49,6 @@ jobs:
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
-
-      - name: Verify Chrome & Driver
-        run: |
-          google-chrome --version
-          chromedriver --version
 
       - name: Determine test mode
         run: |
@@ -86,18 +79,15 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            # Получаем предыдущий коммит
-            if [ -z "${{ github.event.before }}" ] || [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
-              git fetch --depth=2 origin main
-              BEFORE_SHA=$(git rev-parse HEAD~1)
+            PREV_COMMIT=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+            if [ -n "$PREV_COMMIT" ]; then
+              CHANGED_TESTS=$(git diff --name-only $PREV_COMMIT ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             else
-              BEFORE_SHA=${{ github.event.before }}
+              CHANGED_TESTS=""
             fi
 
-            CHANGED_TESTS=$(git diff --name-only $BEFORE_SHA ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
-            echo "Changed test files: $CHANGED_TESTS"
-
             if [ -n "$CHANGED_TESTS" ]; then
+              echo "Changed test files: $CHANGED_TESTS"
               $TEST_CMD $CHANGED_TESTS
             else
               echo "No changed tests found. Running all tests."
