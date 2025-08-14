@@ -2,15 +2,14 @@ name: Run Selenium Tests
 
 on:
   push:
-    branches:
-      - main
-      - master
+    paths:
+      - 'tests/**/*.py'
   workflow_dispatch:
     inputs:
       mode:
         description: "Test mode: all | changed | path | marker"
         required: true
-        default: "all"
+        default: "changed"
       test_path:
         description: "Path to tests (if mode=path)"
         required: false
@@ -25,6 +24,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # нужно для git diff при "changed"
 
       - name: Install dependencies
         run: |
@@ -37,14 +38,20 @@ jobs:
         run: |
           wget -q -O google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome.deb
+          google-chrome --version
 
       - name: Install ChromeDriver
         run: |
-          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
-          MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
-          CHROMEDRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$MAJOR_VERSION)
-          wget -q -O chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
-          unzip chromedriver_linux64.zip
+          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1)
+          echo "Detected Chrome version: $CHROME_VERSION"
+          echo "Detected major version: $MAJOR_VERSION"
+
+          CHROMEDRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${MAJOR_VERSION}")
+          echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION"
+
+          wget -q -O chromedriver_linux64.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
+          unzip -o chromedriver_linux64.zip
           sudo mv chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
 
@@ -59,17 +66,10 @@ jobs:
           pip3 --version
           python3 -m pytest --version
 
-          # Если запуск от push — принудительно ставим режим "changed"
-          if [ "${{ github.event_name }}" = "push" ]; then
-            MODE="changed"
-          else
-            MODE="${{ github.event.inputs.mode }}"
-          fi
-
+          MODE="${{ github.event.inputs.mode || 'changed' }}"
           PATH_INPUT="${{ github.event.inputs.test_path }}"
           MARKER="${{ github.event.inputs.test_marker }}"
 
-          echo "Event: ${{ github.event_name }}"
           echo "Mode: $MODE"
           echo "Test path: $PATH_INPUT"
           echo "Marker: $MARKER"
@@ -78,7 +78,7 @@ jobs:
             python3 -m pytest
 
           elif [[ "$MODE" == "changed" ]]; then
-            CHANGED_TESTS=$(git diff --name-only HEAD~1 HEAD | grep -E 'tests/.*\.py$' || true)
+            CHANGED_TESTS=$(git diff --name-only HEAD~1 HEAD | grep -E '^tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               python3 -m pytest $CHANGED_TESTS
