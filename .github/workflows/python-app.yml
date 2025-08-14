@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # чтобы git diff работал корректно
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -84,7 +86,7 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            # Если нет предыдущего коммита, берём последний
+            # Получаем предыдущий коммит
             if [ -z "${{ github.event.before }}" ] || [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
               git fetch --depth=2 origin main
               BEFORE_SHA=$(git rev-parse HEAD~1)
@@ -94,10 +96,11 @@ jobs:
 
             CHANGED_TESTS=$(git diff --name-only $BEFORE_SHA ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
+
             if [ -n "$CHANGED_TESTS" ]; then
               $TEST_CMD $CHANGED_TESTS
             else
-              echo "No changed tests found. Running all tests instead."
+              echo "No changed tests found. Running all tests."
               $TEST_CMD
             fi
 
