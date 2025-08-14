@@ -1,6 +1,10 @@
 name: Run Selenium Tests
 
 on:
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch:
     inputs:
       mode:
@@ -49,16 +53,23 @@ jobs:
           google-chrome --version
           chromedriver --version
 
-      - name: Run tests based on mode
+      - name: Run tests
         run: |
           python3 --version
           pip3 --version
           python3 -m pytest --version
 
-          MODE="${{ github.event.inputs.mode }}"
+          # Если запуск от push — принудительно ставим режим "changed"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            MODE="changed"
+          else
+            MODE="${{ github.event.inputs.mode }}"
+          fi
+
           PATH_INPUT="${{ github.event.inputs.test_path }}"
           MARKER="${{ github.event.inputs.test_marker }}"
 
+          echo "Event: ${{ github.event_name }}"
           echo "Mode: $MODE"
           echo "Test path: $PATH_INPUT"
           echo "Marker: $MARKER"
@@ -95,3 +106,4 @@ jobs:
             echo "Invalid mode: $MODE"
             exit 1
           fi
+
