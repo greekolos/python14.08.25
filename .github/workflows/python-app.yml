@@ -42,15 +42,27 @@ jobs:
           google-chrome --version
           chromedriver --version
 
+      - name: Determine test mode
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            MODE="${{ github.event.inputs.mode }}"
+            PATH_INPUT="${{ github.event.inputs.test_path }}"
+            MARKER="${{ github.event.inputs.test_marker }}"
+          else
+            # Для пуша запускаем только изменённые тесты
+            MODE="changed"
+            PATH_INPUT=""
+            MARKER=""
+          fi
+          echo "MODE=$MODE" >> $GITHUB_ENV
+          echo "PATH_INPUT=$PATH_INPUT" >> $GITHUB_ENV
+          echo "MARKER=$MARKER" >> $GITHUB_ENV
+
       - name: Run tests
         run: |
           python3 --version
           pip3 --version
           python3 -m pytest --version
-
-          MODE="${{ github.event.inputs.mode }}"
-          PATH_INPUT="${{ github.event.inputs.test_path }}"
-          MARKER="${{ github.event.inputs.test_marker }}"
 
           echo "Mode: $MODE"
           echo "Test path: $PATH_INPUT"
@@ -60,7 +72,6 @@ jobs:
             python3 -m pytest
 
           elif [[ "$MODE" == "changed" ]]; then
-            # На пуше: берём изменённые тесты
             CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
@@ -88,5 +99,4 @@ jobs:
           else
             echo "Invalid mode: $MODE"
             exit 1
-
 
