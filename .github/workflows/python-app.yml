@@ -3,7 +3,7 @@ name: Run Selenium Tests
 on:
   push:
     branches:
-      - '**'  # Все ветки
+      - main
   workflow_dispatch:
     inputs:
       mode:
@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # важно для git diff на пуше
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -40,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0
+          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2t64
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install pytest-xdist
@@ -84,12 +86,7 @@ jobs:
             $TEST_CMD
 
           elif [[ "$MODE" == "changed" ]]; then
-            # Определяем изменённые тесты
-            if [ -n "${{ github.event.before }}" ] && [ -n "${{ github.sha }}" ]; then
-              CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
-            else
-              CHANGED_TESTS=""
-            fi
+            CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               $TEST_CMD $CHANGED_TESTS
@@ -116,4 +113,3 @@ jobs:
           else
             echo "Invalid mode: $MODE"
             exit 1
-          fi
