@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0 libasound2t64
+          sudo apt-get install -y wget unzip xvfb libnss3 libgtk-3-0
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
           pip3 install pytest-xdist
@@ -111,3 +111,4 @@ jobs:
           else
             echo "Invalid mode: $MODE"
             exit 1
+          fi
