@@ -2,8 +2,8 @@ name: Run Selenium Tests
 
 on:
   push:
-    paths:
-      - 'tests/**/*.py'
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       mode:
@@ -24,8 +24,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # нужно для git diff при "changed"
 
       - name: Install dependencies
         run: |
@@ -34,26 +32,10 @@ jobs:
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
 
-      - name: Install Chrome
-        run: |
-          wget -q -O google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./google-chrome.deb
-          google-chrome --version
-
-      - name: Install ChromeDriver
-        run: |
-          CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1)
-          echo "Detected Chrome version: $CHROME_VERSION"
-          echo "Detected major version: $MAJOR_VERSION"
-
-          CHROMEDRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${MAJOR_VERSION}")
-          echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION"
-
-          wget -q -O chromedriver_linux64.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
-          unzip -o chromedriver_linux64.zip
-          sudo mv chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
+      - name: Setup Chrome and ChromeDriver
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
       - name: Verify Chrome & Driver
         run: |
@@ -66,7 +48,7 @@ jobs:
           pip3 --version
           python3 -m pytest --version
 
-          MODE="${{ github.event.inputs.mode || 'changed' }}"
+          MODE="${{ github.event.inputs.mode }}"
           PATH_INPUT="${{ github.event.inputs.test_path }}"
           MARKER="${{ github.event.inputs.test_marker }}"
 
@@ -78,7 +60,8 @@ jobs:
             python3 -m pytest
 
           elif [[ "$MODE" == "changed" ]]; then
-            CHANGED_TESTS=$(git diff --name-only HEAD~1 HEAD | grep -E '^tests/.*\.py$' || true)
+            # На пуше: берём изменённые тесты
+            CHANGED_TESTS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E 'tests/.*\.py$' || true)
             echo "Changed test files: $CHANGED_TESTS"
             if [ -n "$CHANGED_TESTS" ]; then
               python3 -m pytest $CHANGED_TESTS
@@ -105,5 +88,5 @@ jobs:
           else
             echo "Invalid mode: $MODE"
             exit 1
-          fi
+
 
